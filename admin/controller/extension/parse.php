@@ -5,6 +5,8 @@ class ControllerExtensionParse extends Controller {
 
 	protected $allProducts = array();
 
+	const OPTION_SIZE = 13;
+
 	public function index() {
 
 		require(DIR_MODIFICATION . 'system/library/simple_html_dom.php');
@@ -45,27 +47,26 @@ class ControllerExtensionParse extends Controller {
 		}
 
 		$this->superCategories = array(
-			'Майки' => 1099,
-			'Комплекты' => 1101,
-			'Костюмы' => 1103,
-			'Футболки' => 1105,
-			'Куртки, Толстовки' => 1107,
-			'Носки' => 1109,
-			'Трусы' => 1111,
-			'Туники' => 1119,
-			'Платья' => 1127,
-			'Блузы, водолазки, рубашки' => 1131,
-			'Ночные сорочки' => 1133,
-			'Сарафаны' => 1135,
-			'Халаты' => 1137,
-			'Брюки, леггинсы' => 1139,
-			'Домашняя обувь' => 1149,
-			'Трикотаж для мужчин' => 1117,
-			'Одежда для детей' => 1113,
-			'Шорты, бриджи' => 1123,
-			'Комбинезоны' => 1169,
-			'Пижамы' => 1125,
-                        'не определено' => 1
+			'Майки' => ['id' => 1099, 'path' => 'maiki'],
+			'Комплекты' => ['id' => 1101, 'path' => 'komplekty'],
+			'Костюмы' => ['id' => 1103, 'path' => 'kostumy'],
+			'Футболки' => ['id' => 1105, 'path' => 'futbolki'],
+			'Куртки, Толстовки' => ['id' => 1107, 'path' => 'kurtki-tolstovki'],
+			'Носки' => ['id' => 1109, 'path' => 'noski'],
+			'Трусы' => ['id' => 1111, 'path' => 'trusy'],
+			'Туники' => ['id' => 1119, 'path' => 'tuniki'],
+			'Платья' => ['id' => 1127, 'path' => 'platya'],
+			'Блузы, водолазки, рубашки' => ['id' => 1131, 'path' => 'bluzy-rubashki'],
+			'Ночные сорочки' => ['id' => 1133, 'path' => 'sorochki'],
+			'Сарафаны' => ['id' => 1135, 'path' => 'sarafany'],
+			'Халаты' => ['id' => 1137, 'path' => 'halaty'],
+			'Брюки, леггинсы' => ['id' => 1139, 'path' => 'bruki'],
+			'Трикотаж для мужчин' => ['id' => 1117, 'path' => 'mujskoe'],
+			'Одежда для детей' => ['id' => 1113, 'path' => 'detskoe'],
+			'Шорты, бриджи' => ['id' => 1123, 'path' => 'shorty-bridji'],
+			'Комбинезоны' => ['id' => 1169, 'path' => 'kombinezony'],
+			'Пижамы' => ['id' => 1125, 'path' => 'pijamy'],
+            'не определено' => ['id' => 1, 'path' => 'noindent']
 		);
 	}
 
@@ -97,23 +98,30 @@ class ControllerExtensionParse extends Controller {
 				$descrBlock = $pageHtml->find('.catalog_description', 0);
 				$sizesElem = $descrBlock->find('#catalog_counts .size-title');
                                 
-                                if ($sizesElem) {
-                                    $sizes = [];
+                if ($sizesElem) {
+                    $sizes = [];
 
-                                    foreach($sizesElem as $elem) {
-                                        $sizes[] = $elem->plaintext;
-                                    }
-                                } else {
-                                    $sizes = null;
-                                }
-                                
-                                $description = $descrBlock->find('.catalog_addonfield_ div', 0)->innertext;
+                    foreach($sizesElem as $elem) {
+                        $sizes[] = $elem->plaintext;
+                    }
+                } else {
+                    $sizes = null;
+                }
+
+                $images = [];
+                $imagesList = $pageHtml->find('#catalog_slides li > a');
+
+                foreach($imagesList as $image) {
+                	$images[] = 'http://lena-basco.ru' . $image->href;
+                }
+                
+                $description = $descrBlock->find('.catalog_addonfield_ div', 0)->innertext;
 				$products[$title] = [
-                                    'composition' => $descrBlock->find('.catalog_addonfield_sostav div', 0)->plaintext,
-                                    'description' => $description,
-                                    'images' => [],
-                                    'sizes' => $sizes,
-                                    'price' => (int)$descrBlock->find('tr.catalog_size_count', 0)->find('td', 3)->plaintext
+                    'composition' => $descrBlock->find('.catalog_addonfield_sostav div', 0)->plaintext,
+                    'description' => $description,
+                    'images' => $images,
+                    'sizes' => $sizes,
+                    'price' => (int)$descrBlock->find('tr.catalog_size_count', 0)->find('td', 3)->plaintext
 				];
 
 			}
@@ -124,33 +132,38 @@ class ControllerExtensionParse extends Controller {
 
 	protected function checkProductsInBase() {
 		$this->load->model('catalog/product');
-                $this->load->model('catalog/category');
+        $this->load->model('catalog/category');
+        $this->load->model('catalog/option');
 
 		foreach($this->allProducts as $title => $product) {
-                    print_r($title);
                     $product_inbase = $this->model_catalog_product->getProducts(array('filter_model' => $title));
 
                     if ($product_inbase) {
-                            var_dump($product_inbase);
+                    	print_r($title);
                     } else {
-                        $categoryId = $this->defineCategory($title, $product['description']);
+                        $categoryData = $this->defineCategory($title, $product['description']);
+                        $categoryId = $categoryData['id'];
                         $category = $this->model_catalog_category->getCategory($categoryId);
                         $productName = $category['product_name'];
                         $number = $category['increment_value'];
                         $addName = $this->defineAddName($title, $product['description']);
                         
                         $name = $productName . ' Л-' . $number . $addName;
+
+                        $images = [];//$this->uploadImages($product['images'], $categoryData['path'], $name);
                         
                         if ($product['sizes'] == null) {
                             $status = 0;
                         } else {
                             $status = 1;
+                            $sizes = $this->getSizesArray($product['sizes']);
                         }
                         
                             $data = [
                                     'model' => $title,
                                     'stock_status_id' => 7,
-                                    'image' => '',
+                                    'image' => $images[0]['image'],
+                                    'product_image' => $images,
                                     'quantity' => 1000,
                                     'price' => $product['price'],
                                     'minimum' => 1,
@@ -164,18 +177,57 @@ class ControllerExtensionParse extends Controller {
                                         ]
                                     ],
                                     'product_attribute' => [
-                                        1 => [
+                                        0 => [
                                             'attribute_id' => 13,
-                                            'product_attribute_description' => [1 => $product['composition']]
+                                            'product_attribute_description' => array(1 => array('text' => $product['composition'])
                                         ]
                                     ]
                             ];
-                            //print_r($data);
+                            print_r($data);
                             
-                            $this->model_catalog_product->addProduct($data);
-                            $this->model_catalog_category->updateCategoryIncrement($categoryId, $number);
+                            //$this->model_catalog_product->addProduct($data);
+                            //$this->model_catalog_category->updateCategoryIncrement($categoryId, $number);
                     }
 		}
+	}
+
+	protected function getSizesArray($sizes) {
+		$resultSizes = [];
+
+		foreach($sizes as $size) {
+			$option_value_id = $this->model_catalog_option->getOptionValueIdByDescription($size, $self::OPTION_SIZE);
+		}
+	}
+
+	protected function uploadImages($images, $path, $productName) {
+		$loadedImages = [];
+		$end_dir = 'catalog' . DIRECTORY_SEPARATOR . 'elena' . DIRECTORY_SEPARATOR . $path;
+		$full_dir = DIR_IMAGE . $end_dir;
+
+		if ( !file_exists($full_dir) ) {
+			mkdir($full_dir, 0775);
+		}
+
+		$productName = $this->translit($productName);
+
+		foreach($images as $key => $image) {
+			$imageInfo = new SplFileInfo($image);
+			$fileName = DIRECTORY_SEPARATOR . $productName . '_' . $key . '.' . $imageInfo->getExtension();
+
+			if ( !file_exists($full_dir . $fileName) ) {
+
+				if ( file_put_contents($filePath, file_get_contents($image)) ) {
+					$loadedImages[] = [
+						'image' => $end_dir . $fileName,
+						'sort_order' => $key,
+						'color' => null
+					];
+				}
+
+			}
+		}
+
+		return $loadedImages;
 	}
 
 	protected function defineCategory($title, $description) {
@@ -280,31 +332,45 @@ class ControllerExtensionParse extends Controller {
             $description = mb_strtolower($description);
                 
             if ( strripos($title, 'кулирка') !== false || strripos($description, 'кулирк') !== false ) {
-                return ' - кулирка';
+                return ' (кулирка)';
             }
             
             if ( strripos($title, 'велюр') !== false || strripos($description, 'велюр') !== false ) {
-                return ' - велюр';
+                return ' (велюр)';
             }
             
             if ( strripos($title, 'ангора') !== false || strripos($description, 'ангора') !== false ) {
-                return ' - ангора';
+                return ' (ангора)';
             }
             
             if ( strripos($title, 'футер') !== false || strripos($description, 'футер') !== false ) {
-                return ' - футер';
+                return ' (футер)';
             }
             
             if ( strripos($title, 'велсофт') !== false || strripos($description, 'велсофт') !== false ) {
-                return ' - велсофт';
+                return ' (велсофт)';
             }        
             
             if ( strripos($title, 'интерлок') !== false || strripos($description, 'интерлок') !== false ) {
-                return ' - интерлок';
+                return ' (интерлок)';
             }
             
             if ( strripos($title, 'махра') !== false || strripos($description, 'махра') !== false ) {
-                return ' - махра';
+                return ' (махра)';
             }
         }
+
+
+    public function translit($s) {
+		$s = (string) $s; // преобразуем в строковое значение
+		$s = strip_tags($s); // убираем HTML-теги
+		$s = str_replace(array("\n", "\r"), " ", $s); // убираем перевод каретки
+		$s = preg_replace("/\s+/", ' ', $s); // удаляем повторяющие пробелы
+		$s = trim($s); // убираем пробелы в начале и конце строки
+		$s = function_exists('mb_strtolower') ? mb_strtolower($s) : strtolower($s); // переводим строку в нижний регистр (иногда надо задать локаль)
+		$s = strtr($s, array('а'=>'a','б'=>'b','в'=>'v','г'=>'g','д'=>'d','е'=>'e','ё'=>'e','ж'=>'j','з'=>'z','и'=>'i','й'=>'y','к'=>'k','л'=>'l','м'=>'m','н'=>'n','о'=>'o','п'=>'p','р'=>'r','с'=>'s','т'=>'t','у'=>'u','ф'=>'f','х'=>'h','ц'=>'c','ч'=>'ch','ш'=>'sh','щ'=>'shch','ы'=>'y','э'=>'e','ю'=>'yu','я'=>'ya','ъ'=>'','ь'=>''));
+		$s = preg_replace("/[^0-9a-z-_ ]/i", "", $s); // очищаем строку от недопустимых символов
+		$s = str_replace(" ", "-", $s); // заменяем пробелы знаком минус
+		return $s; // возвращаем результат
+	}
 }
