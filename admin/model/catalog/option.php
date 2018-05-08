@@ -184,9 +184,9 @@ class ModelCatalogOption extends Model {
 	/** Added Function
 	*/
 	public function getOptionValueIdByDescription($name, $option_id) {
-		$option_value_query = $this->db->query("SELECT option_value_id FROM " . DB_PREFIX . "option_value_description WHERE option_id = '" . (int)$option_id . "' AND name = '" . $name . "'");
+		$option_value_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "option_value_description WHERE option_id = '" . (int)$option_id . "' AND name = '" . $name . "'");
 
-		return (int)$option_value_query;
+		return $option_value_query->row['option_value_id'];
 	}
 
 	public function getTotalOptions() {

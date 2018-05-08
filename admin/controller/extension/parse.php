@@ -1,4 +1,6 @@
 <?php
+include('classSimpleImage.php');
+
 class ControllerExtensionParse extends Controller {
 	protected $categories = array();
 	protected $superCategories = array();
@@ -150,7 +152,7 @@ class ControllerExtensionParse extends Controller {
                         
                         $name = $productName . ' Л-' . $number . $addName;
 
-                        $images = [];//$this->uploadImages($product['images'], $categoryData['path'], $name);
+                        $images = $this->uploadImages($product['images'], $categoryData['path'], $name);
                         
                         if ($product['sizes'] == null) {
                             $status = 0;
@@ -169,6 +171,8 @@ class ControllerExtensionParse extends Controller {
                                     'minimum' => 1,
                                     'status' => $status,
                                     'product_category' => array($categoryId),
+                                    'keyword' => $this->translit($name),
+                                    'product_store' => [0],
                                     'product_description' => [
                                         1 => [
                                             'name' => $name,
@@ -179,14 +183,22 @@ class ControllerExtensionParse extends Controller {
                                     'product_attribute' => [
                                         0 => [
                                             'attribute_id' => 13,
-                                            'product_attribute_description' => array(1 => array('text' => $product['composition'])
+                                            'product_attribute_description' => array(1 => array('text' => $product['composition']))
                                         ]
+                                    ],
+                                    'product_option' => [
+                                    	0 => [
+                                    		'type' => 'select',
+                                    		'option_id' => self::OPTION_SIZE,
+                                    		'required' => true,
+                                    		'product_option_value' => $sizes
+                                    	]
                                     ]
                             ];
-                            print_r($data);
+                            //print_r($data);
                             
-                            //$this->model_catalog_product->addProduct($data);
-                            //$this->model_catalog_category->updateCategoryIncrement($categoryId, $number);
+                            $this->model_catalog_product->addProduct($data);
+                            $this->model_catalog_category->updateCategoryIncrement($categoryId, $number);
                     }
 		}
 	}
@@ -195,8 +207,22 @@ class ControllerExtensionParse extends Controller {
 		$resultSizes = [];
 
 		foreach($sizes as $size) {
-			$option_value_id = $this->model_catalog_option->getOptionValueIdByDescription($size, $self::OPTION_SIZE);
+			$option_value_id = $this->model_catalog_option->getOptionValueIdByDescription($size, self::OPTION_SIZE);
+
+			$resultSizes[] = [
+				'option_value_id' => $option_value_id,
+				'quantity' => 100,
+				'subtract' => 0,
+				'price' => 0,
+				'price_prefix' => '+',
+				'points' => 0,
+				'points_prefix' => '+',
+				'weight' => 0,
+				'weight_prefix' => '+'
+			];
 		}
+
+		return $resultSizes;
 	}
 
 	protected function uploadImages($images, $path, $productName) {
@@ -204,26 +230,47 @@ class ControllerExtensionParse extends Controller {
 		$end_dir = 'catalog' . DIRECTORY_SEPARATOR . 'elena' . DIRECTORY_SEPARATOR . $path;
 		$full_dir = DIR_IMAGE . $end_dir;
 
+		$cashe_dir = DIR_IMAGE . 'cache' . DIRECTORY_SEPARATOR . 'catalog' . DIRECTORY_SEPARATOR . 'elena' . DIRECTORY_SEPARATOR . $path;
+
 		if ( !file_exists($full_dir) ) {
 			mkdir($full_dir, 0775);
+		}
+		if ( !file_exists($cashe_dir) ) {
+			mkdir($cashe_dir, 0775);
 		}
 
 		$productName = $this->translit($productName);
 
 		foreach($images as $key => $image) {
 			$imageInfo = new SplFileInfo($image);
-			$fileName = DIRECTORY_SEPARATOR . $productName . '_' . $key . '.' . $imageInfo->getExtension();
+			$extension = $imageInfo->getExtension();
+
+			$name = DIRECTORY_SEPARATOR . $productName . '_' . $key;
+			$fileName = $name . '.' . $extension;
 
 			if ( !file_exists($full_dir . $fileName) ) {
 
-				if ( file_put_contents($filePath, file_get_contents($image)) ) {
+				if ( file_put_contents($full_dir . $fileName, file_get_contents($image)) ) {
 					$loadedImages[] = [
 						'image' => $end_dir . $fileName,
 						'sort_order' => $key,
 						'color' => null
 					];
+
+					/*$simpleimage = new SimpleImage();
+					$simpleimage->load($full_dir . $fileName);
+					$simpleimage->resize(40, 40);
+					$simpleimage->save($cashe_dir . $name . '-40x40.' . $extension);*/
+				} else {
+					print_r($image);
 				}
 
+			} else {
+				$loadedImages[] = [
+					'image' => $end_dir . $fileName,
+					'sort_order' => $key,
+					'color' => null
+				];
 			}
 		}
 
