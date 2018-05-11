@@ -3,28 +3,83 @@ include('classSimpleImage.php');
 
 class ControllerExtensionParse extends Controller {
 	protected $categories = array();
-	protected $superCategories = array();
+
+	protected $superCategories = array(
+		'Майки' => ['id' => 1099, 'path' => 'maiki'],
+		'Комплекты' => ['id' => 1101, 'path' => 'komplekty'],
+		'Костюмы' => ['id' => 1103, 'path' => 'kostumy'],
+		'Футболки' => ['id' => 1105, 'path' => 'futbolki'],
+		'Куртки, Толстовки' => ['id' => 1107, 'path' => 'kurtki-tolstovki'],
+		'Носки' => ['id' => 1109, 'path' => 'noski'],
+		'Трусы' => ['id' => 1111, 'path' => 'trusy'],
+		'Туники' => ['id' => 1119, 'path' => 'tuniki'],
+		'Платья' => ['id' => 1127, 'path' => 'platya'],
+		'Блузы, водолазки, рубашки' => ['id' => 1131, 'path' => 'bluzy-rubashki'],
+		'Ночные сорочки' => ['id' => 1133, 'path' => 'sorochki'],
+		'Сарафаны' => ['id' => 1135, 'path' => 'sarafany'],
+		'Халаты' => ['id' => 1137, 'path' => 'halaty'],
+		'Брюки, леггинсы' => ['id' => 1139, 'path' => 'bruki'],
+		'Трикотаж для мужчин' => ['id' => 1117, 'path' => 'mujskoe'],
+		'Одежда для детей' => ['id' => 1113, 'path' => 'detskoe'],
+		'Шорты, бриджи' => ['id' => 1123, 'path' => 'shorty-bridji'],
+		'Комбинезоны' => ['id' => 1169, 'path' => 'kombinezony'],
+		'Пижамы' => ['id' => 1125, 'path' => 'pijamy'],
+        'не определено' => ['id' => 1, 'path' => 'noindent']
+	);
 
 	protected $allProducts = array();
 
 	const OPTION_SIZE = 13;
 
 	public function index() {
-
-		require(DIR_MODIFICATION . 'system/library/simple_html_dom.php');
-
-		$this->identCategories();
-
-		$data['categories'] = $this->categories;
+		$data['header'] = $this->load->controller('common/header');
+		$data['column_left'] = $this->load->controller('common/column_left');
+		$data['footer'] = $this->load->controller('common/footer');
 
 		$this->response->setOutput($this->load->view('extension/parse.tpl', $data));
 
-		/*foreach($this->categories as $category) {
-			$this->allProducts = array_merge($this->allProducts, $this->getProductsFromCategory($category['link']));
-		}*/
-		$this->allProducts = $this->getProductsFromCategory($this->categories[2]['link']);
+	}
 
-		$this->checkProductsInBase();
+	public function parseLena() {
+		require(DIR_MODIFICATION . 'system/library/simple_html_dom.php');
+
+		try {
+			$this->identCategories();
+
+			$data['categories'] = $this->categories;
+
+			foreach($this->categories as $category) {
+				$this->allProducts = array_merge($this->allProducts, $this->getProductsFromCategory($category['link']));
+			}
+
+			$this->load->model('extension/parse');
+			$this->model_extension_parse->addEntries($this->allProducts);
+		} catch (Exception $e) {
+			$this->response->setOutput(json_encode(['status' => 'fail', 'error' => $e->getMessage()]));
+			return;
+		}
+		
+		$this->response->setOutput(json_encode(['status' => 'ok']));
+	}
+
+	public function loadData() {
+		try {
+			$this->load->model('extension/parse');
+			$this->allProducts = $this->model_extension_parse->getEntries(50);
+			$count = count($this->allProducts);
+
+			if (empty($this->allProducts)) {
+				$this->response->setOutput(json_encode(['status' => 'ok']));
+				return;
+			}
+
+			$this->checkProductsInBase();
+		} catch (Exception $e) {
+			$this->response->setOutput(json_encode(['status' => 'fail', 'error' => $e->getMessage()]));
+			return;
+		}
+
+		$this->response->setOutput(json_encode(['status' => 'wait', 'count' => $count]));
 	}
 
 	protected function identCategories() {
@@ -47,29 +102,6 @@ class ControllerExtensionParse extends Controller {
                             'link' => 'http://lena-basco.ru' . $link->href
                     ];
 		}
-
-		$this->superCategories = array(
-			'Майки' => ['id' => 1099, 'path' => 'maiki'],
-			'Комплекты' => ['id' => 1101, 'path' => 'komplekty'],
-			'Костюмы' => ['id' => 1103, 'path' => 'kostumy'],
-			'Футболки' => ['id' => 1105, 'path' => 'futbolki'],
-			'Куртки, Толстовки' => ['id' => 1107, 'path' => 'kurtki-tolstovki'],
-			'Носки' => ['id' => 1109, 'path' => 'noski'],
-			'Трусы' => ['id' => 1111, 'path' => 'trusy'],
-			'Туники' => ['id' => 1119, 'path' => 'tuniki'],
-			'Платья' => ['id' => 1127, 'path' => 'platya'],
-			'Блузы, водолазки, рубашки' => ['id' => 1131, 'path' => 'bluzy-rubashki'],
-			'Ночные сорочки' => ['id' => 1133, 'path' => 'sorochki'],
-			'Сарафаны' => ['id' => 1135, 'path' => 'sarafany'],
-			'Халаты' => ['id' => 1137, 'path' => 'halaty'],
-			'Брюки, леггинсы' => ['id' => 1139, 'path' => 'bruki'],
-			'Трикотаж для мужчин' => ['id' => 1117, 'path' => 'mujskoe'],
-			'Одежда для детей' => ['id' => 1113, 'path' => 'detskoe'],
-			'Шорты, бриджи' => ['id' => 1123, 'path' => 'shorty-bridji'],
-			'Комбинезоны' => ['id' => 1169, 'path' => 'kombinezony'],
-			'Пижамы' => ['id' => 1125, 'path' => 'pijamy'],
-            'не определено' => ['id' => 1, 'path' => 'noindent']
-		);
 	}
 
 	protected function getProductsFromCategory($link) {
@@ -92,13 +124,24 @@ class ControllerExtensionParse extends Controller {
 
 		$i = 0;
 		foreach ($links as $title => $prodlink) {
-			if ($i > 2) break;
+			//if ($i > 2) break;
 			$i++;
 			$pageHtml = file_get_html($prodlink);
 
 			if ($pageHtml) {
 				$descrBlock = $pageHtml->find('.catalog_description', 0);
-				$sizesElem = $descrBlock->find('#catalog_counts .size-title');
+
+				if ($descrBlock) {
+					$sizesElem = $descrBlock->find('#catalog_counts .size-title');
+					$description = $descrBlock->find('.catalog_addonfield_ div', 0)->innertext;
+					$priceElement = $descrBlock->find('tr.catalog_size_count', 0);
+					$composition = $descrBlock->find('.catalog_addonfield_sostav div', 0)->plaintext;
+				} else {
+					$sizesElem = null;
+					$description = '';
+					$priceElement = null;
+					$composition = null;
+				}
                                 
                 if ($sizesElem) {
                     $sizes = [];
@@ -110,6 +153,12 @@ class ControllerExtensionParse extends Controller {
                     $sizes = null;
                 }
 
+                if ($priceElement) {
+                	$price = $priceElement->find('td', 3)->plaintext;
+                } else {
+                	$price = null;
+                }
+
                 $images = [];
                 $imagesList = $pageHtml->find('#catalog_slides li > a');
 
@@ -117,13 +166,13 @@ class ControllerExtensionParse extends Controller {
                 	$images[] = 'http://lena-basco.ru' . $image->href;
                 }
                 
-                $description = $descrBlock->find('.catalog_addonfield_ div', 0)->innertext;
+                
 				$products[$title] = [
-                    'composition' => $descrBlock->find('.catalog_addonfield_sostav div', 0)->plaintext,
+                    'composition' => $composition,
                     'description' => $description,
                     'images' => $images,
                     'sizes' => $sizes,
-                    'price' => (int)$descrBlock->find('tr.catalog_size_count', 0)->find('td', 3)->plaintext
+                    'price' => $price
 				];
 
 			}
@@ -137,76 +186,101 @@ class ControllerExtensionParse extends Controller {
         $this->load->model('catalog/category');
         $this->load->model('catalog/option');
 
-		foreach($this->allProducts as $title => $product) {
-                    $product_inbase = $this->model_catalog_product->getProducts(array('filter_model' => $title));
+$i = 0;
+		foreach($this->allProducts as $product) {
+			$tempId = $product['id'];
+            $product_inbase = $this->model_catalog_product->getProducts(array('filter_model' => $product['title']));
 
-                    if ($product_inbase) {
-                    	print_r($title);
-                    } else {
-                        $categoryData = $this->defineCategory($title, $product['description']);
-                        $categoryId = $categoryData['id'];
-                        $category = $this->model_catalog_category->getCategory($categoryId);
-                        $productName = $category['product_name'];
-                        $number = $category['increment_value'];
-                        $addName = $this->defineAddName($title, $product['description']);
-                        
-                        $name = $productName . ' Л-' . $number . $addName;
+            if ($product_inbase) {
+            	$productId = $product_inbase[0]['product_id'];
 
-                        $images = $this->uploadImages($product['images'], $categoryData['path'], $name);
-                        
-                        if ($product['sizes'] == null) {
-                            $status = 0;
-                        } else {
-                            $status = 1;
-                            $sizes = $this->getSizesArray($product['sizes']);
-                        }
-                        
-                            $data = [
-                                    'model' => $title,
-                                    'stock_status_id' => 7,
-                                    'image' => $images[0]['image'],
-                                    'product_image' => $images,
-                                    'quantity' => 1000,
-                                    'price' => $product['price'],
-                                    'minimum' => 1,
-                                    'status' => $status,
-                                    'product_category' => array($categoryId),
-                                    'keyword' => $this->translit($name),
-                                    'product_store' => [0],
-                                    'product_description' => [
-                                        1 => [
-                                            'name' => $name,
-                                            'description' => $product['description'],
-                                            'meta_title' => $name
-                                        ]
-                                    ],
-                                    'product_attribute' => [
-                                        0 => [
-                                            'attribute_id' => 13,
-                                            'product_attribute_description' => array(1 => array('text' => $product['composition']))
-                                        ]
-                                    ],
-                                    'product_option' => [
-                                    	0 => [
-                                    		'type' => 'select',
-                                    		'option_id' => self::OPTION_SIZE,
-                                    		'required' => true,
-                                    		'product_option_value' => $sizes
-                                    	]
-                                    ]
-                            ];
-                            //print_r($data);
-                            
-                            $this->model_catalog_product->addProduct($data);
-                            $this->model_catalog_category->updateCategoryIncrement($categoryId, $number);
-                    }
+            	$data = [
+            		'price' => $product['price'],
+            		'status' => $product['active'],
+            		'product_option' => [
+                        	0 => [
+                        		'type' => 'select',
+                        		'option_id' => self::OPTION_SIZE,
+                        		'required' => true,
+                        		'product_option_value' => $sizes
+                        	]
+                        ]
+            	];
+
+            	$this->model_catalog_product->updateProduct($productId, $data);
+            } else {
+                $categoryData = $this->defineCategory($product['title'], $product['description']);
+
+                if ($categoryData === null) {
+                	$this->model_extension_parse->deleteEntry($tempId);
+                	continue;
+                }
+
+                $categoryId = $categoryData['id'];
+                
+                $category = $this->model_catalog_category->getCategory($categoryId);
+                $productName = $category['product_name'];
+                $number = $category['increment_value'];
+                $addName = $this->defineAddName($product['title'], $product['description']);
+                
+                $name = $productName . ' Л-' . $number . $addName;
+
+                $images = $this->uploadImages($product['images'], $categoryData['path'], $name);
+                
+                if (trim($product['sizes']) !== '') {
+                    $sizes = $this->getSizesArray($product['sizes']);
+                } else {
+                	$sizes = null;
+                }
+                
+                    $data = [
+                            'model' => $product['title'],
+                            'stock_status_id' => 7,
+                            'image' => $images[0]['image'],
+                            'product_image' => $images,
+                            'quantity' => 1000,
+                            'price' => $product['price'],
+                            'minimum' => 1,
+                            'status' => $product['active'],
+                            'product_category' => array($categoryId),
+                            'keyword' => $this->translit($name),
+                            'product_store' => [0],
+                            'product_description' => [
+                                1 => [
+                                    'name' => $name,
+                                    'description' => $product['description'],
+                                    'meta_title' => $name
+                                ]
+                            ],
+                            'product_attribute' => [
+                                0 => [
+                                    'attribute_id' => 13,
+                                    'product_attribute_description' => array(1 => array('text' => $product['composition']))
+                                ]
+                            ],
+                            'product_option' => [
+                            	0 => [
+                            		'type' => 'select',
+                            		'option_id' => self::OPTION_SIZE,
+                            		'required' => true,
+                            		'product_option_value' => $sizes
+                            	]
+                            ]
+                    ];
+                    //print_r($data);
+                    
+                    $this->model_catalog_product->addProduct($data);
+                    $this->model_catalog_category->updateCategoryIncrement($categoryId, $number);
+            }
+            $this->model_extension_parse->deleteEntry($tempId);
 		}
 	}
 
 	protected function getSizesArray($sizes) {
 		$resultSizes = [];
+		$sizesArr = explode('|', $sizes);
 
-		foreach($sizes as $size) {
+		foreach($sizesArr as $size) {
 			$option_value_id = $this->model_catalog_option->getOptionValueIdByDescription($size, self::OPTION_SIZE);
 
 			$resultSizes[] = [
@@ -227,6 +301,7 @@ class ControllerExtensionParse extends Controller {
 
 	protected function uploadImages($images, $path, $productName) {
 		$loadedImages = [];
+		$imagesArr = explode('|', $images);
 		$end_dir = 'catalog' . DIRECTORY_SEPARATOR . 'elena' . DIRECTORY_SEPARATOR . $path;
 		$full_dir = DIR_IMAGE . $end_dir;
 
@@ -241,7 +316,7 @@ class ControllerExtensionParse extends Controller {
 
 		$productName = $this->translit($productName);
 
-		foreach($images as $key => $image) {
+		foreach($imagesArr as $key => $image) {
 			$imageInfo = new SplFileInfo($image);
 			$extension = $imageInfo->getExtension();
 
@@ -256,13 +331,8 @@ class ControllerExtensionParse extends Controller {
 						'sort_order' => $key,
 						'color' => null
 					];
-
-					/*$simpleimage = new SimpleImage();
-					$simpleimage->load($full_dir . $fileName);
-					$simpleimage->resize(40, 40);
-					$simpleimage->save($cashe_dir . $name . '-40x40.' . $extension);*/
 				} else {
-					print_r($image);
+					continue;
 				}
 
 			} else {
@@ -278,12 +348,19 @@ class ControllerExtensionParse extends Controller {
 	}
 
 	protected function defineCategory($title, $description) {
-                $title = mb_strtolower($title);
-                $description = mb_strtolower($description);
+        $title = mb_strtolower($title);
+        $description = mb_strtolower($description);
+
+        if ( strripos($title, 'conte') !== false || strripos($title, 'glamour') !== false
+        		|| strripos($title, 'полотенце') !== false || strripos($title, 'скатерть') !== false
+        		|| strripos($title, 'простыня') !== false ) {
+        	return null;
+        }
             
 		if ( strripos($title, 'детское') !== false || strripos($description, 'детское') !== false 
                     || strripos($title, 'детские') !== false || strripos($description, 'детские') !== false
-                    || strripos($title, 'детский') !== false || strripos($description, 'детский') !== false ) {
+                    || strripos($title, 'детский') !== false || strripos($description, 'детский') !== false
+                    || strripos($title, 'мальчиков') !== false || strripos($title, 'девочек') !== false ) {
 			return $this->superCategories['Одежда для детей'];
 		}
                 
@@ -310,12 +387,15 @@ class ControllerExtensionParse extends Controller {
 
 		if ( strripos($title, 'парка') !== false || strripos($description, 'парка') !== false 
                      || strripos($title, 'толстовка') !== false || strripos($description, 'толстовка') !== false 
-                     || strripos($title, 'куртка') !== false || strripos($description, 'куртка') !== false ) {
+                     || strripos($title, 'куртка') !== false || strripos($description, 'куртка') !== false 
+                     || strripos($title, 'кофта') !== false || strripos($description, 'кофта') !== false 
+                     || strripos($title, 'свитшот') !== false ) {
 			return $this->superCategories['Куртки, Толстовки'];
 		}
 
 		if ( strripos($title, 'блуза') !== false || strripos($description, 'блуза') !== false 
-                     || strripos($title, 'блузка') !== false || strripos($description, 'блузка') !== false) {
+                    || strripos($title, 'блузка') !== false || strripos($description, 'блузка') !== false
+                    || strripos($title, 'водолазка') !== false || strripos($description, 'водолазка') !== false ) {
 			return $this->superCategories['Блузы, водолазки, рубашки'];
 		}
 
@@ -371,7 +451,7 @@ class ControllerExtensionParse extends Controller {
 			return $this->superCategories['Ночные сорочки'];
 		}
                 
-                return $this->superCategories['не определено'];
+        return $this->superCategories['не определено'];
 	}
         
         protected function defineAddName($title, $description) {
